@@ -1,7 +1,7 @@
 {
   "name": "get-shit-done-cc",
   "version": "1.11.3",
-  "description": "A meta-prompting, context engineering and spec-driven development system for Claude Code, OpenCode and Gemini by TÂCHES.",
+  "description": "A meta-prompting, context engineering and spec-driven development system for Claude Code, OpenCode, Gemini, and Qwen Code.",
   "bin": {
     "get-shit-done-cc": "bin/install.js"
   },
@@ -21,7 +21,10 @@
     "context-engineering",
     "spec-driven-development",
     "gemini",
-    "gemini-cli"
+    "gemini-cli",
+    "qwen",
+    "qwen-code",
+    "qwen3-coder"
   ],
   "author": "TÂCHES",
   "license": "MIT",

@@ -2,7 +2,7 @@
 
 # GET SHIT DONE
 
-**A light-weight and powerful meta-prompting, context engineering and spec-driven development system for Claude Code, OpenCode, and Gemini CLI.**
+**A light-weight and powerful meta-prompting, context engineering and spec-driven development system for Claude Code, OpenCode, Gemini CLI, and Qwen Code.**
 
 **Solves context rot — the quality degradation that happens as Claude fills its context window.**
 
@@ -77,7 +77,7 @@ npx get-shit-done-cc
 ```
 
 The installer prompts you to choose:
-1. **Runtime** — Claude Code, OpenCode, Gemini, or all
+1. **Runtime** — Claude Code, OpenCode, Gemini, Qwen Code, or all
 2. **Location** — Global (all projects) or local (current project only)
 
 Verify with `/gsd:help` inside your chosen runtime.
@@ -103,6 +103,9 @@ npx get-shit-done-cc --opencode --global # Install to ~/.config/opencode/
 
 # Gemini CLI
 npx get-shit-done-cc --gemini --global   # Install to ~/.gemini/
+
+# Qwen Code (optimized for Qwen3-Coder)
+npx get-shit-done-cc --qwen --global     # Install to ~/.qwen/
 
 # All runtimes
 npx get-shit-done-cc --all --global      # Install to all directories

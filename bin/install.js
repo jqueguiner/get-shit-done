@@ -22,6 +22,7 @@ const hasLocal = args.includes('--local') || args.includes('-l');
 const hasOpencode = args.includes('--opencode');
 const hasClaude = args.includes('--claude');
 const hasGemini = args.includes('--gemini');
+const hasQwen = args.includes('--qwen');
 const hasBoth = args.includes('--both'); // Legacy flag, keeps working
 const hasAll = args.includes('--all');
 const hasUninstall = args.includes('--uninstall') || args.includes('-u');
@@ -29,19 +30,21 @@ const hasUninstall = args.includes('--uninstall') || args.includes('-u');
 // Runtime selection - can be set by flags or interactive prompt
 let selectedRuntimes = [];
 if (hasAll) {
-  selectedRuntimes = ['claude', 'opencode', 'gemini'];
+  selectedRuntimes = ['claude', 'opencode', 'gemini', 'qwen'];
 } else if (hasBoth) {
   selectedRuntimes = ['claude', 'opencode'];
 } else {
   if (hasOpencode) selectedRuntimes.push('opencode');
   if (hasClaude) selectedRuntimes.push('claude');
   if (hasGemini) selectedRuntimes.push('gemini');
+  if (hasQwen) selectedRuntimes.push('qwen');
 }
 
 // Helper to get directory name for a runtime (used for local/project installs)
 function getDirName(runtime) {
   if (runtime === 'opencode') return '.opencode';
   if (runtime === 'gemini') return '.gemini';
+  if (runtime === 'qwen') return '.qwen';
   return '.claude';
 }
 
@@ -55,24 +58,38 @@ function getOpencodeGlobalDir() {
   if (process.env.OPENCODE_CONFIG_DIR) {
     return expandTilde(process.env.OPENCODE_CONFIG_DIR);
   }
-  
+
   // 2. OPENCODE_CONFIG env var (use its directory)
   if (process.env.OPENCODE_CONFIG) {
     return path.dirname(expandTilde(process.env.OPENCODE_CONFIG));
   }
-  
+
   // 3. XDG_CONFIG_HOME/opencode
   if (process.env.XDG_CONFIG_HOME) {
     return path.join(expandTilde(process.env.XDG_CONFIG_HOME), 'opencode');
   }
-  
+
   // 4. Default: ~/.config/opencode (XDG default)
   return path.join(os.homedir(), '.config', 'opencode');
 }
 
 /**
+ * Get the global config directory for Qwen Code
+ * Qwen Code uses ~/.qwen/ as default, or QWEN_CONFIG_DIR env var if set
+ */
+function getQwenGlobalDir() {
+  // 1. Explicit QWEN_CONFIG_DIR env var
+  if (process.env.QWEN_CONFIG_DIR) {
+    return expandTilde(process.env.QWEN_CONFIG_DIR);
+  }
+
+  // 2. Default: ~/.qwen
+  return path.join(os.homedir(), '.qwen');
+}
+
+/**
  * Get the global config directory for a runtime
- * @param {string} runtime - 'claude', 'opencode', or 'gemini'
+ * @param {string} runtime - 'claude', 'opencode', 'gemini', or 'qwen'
  * @param {string|null} explicitDir - Explicit directory from --config-dir flag
  */
 function getGlobalDir(runtime, explicitDir = null) {
@@ -83,7 +100,18 @@ function getGlobalDir(runtime, explicitDir = null) {
     }
     return getOpencodeGlobalDir();
   }
-  
+
+  if (runtime === 'qwen') {
+    // Qwen Code: --config-dir > QWEN_CONFIG_DIR > ~/.qwen
+    if (explicitDir) {
+      return expandTilde(explicitDir);
+    }
+    if (process.env.QWEN_CONFIG_DIR) {
+      return expandTilde(process.env.QWEN_CONFIG_DIR);
+    }
+    return getQwenGlobalDir();
+  }
+
   if (runtime === 'gemini') {
     // Gemini: --config-dir > GEMINI_CONFIG_DIR > ~/.gemini
     if (explicitDir) {
@@ -94,7 +122,7 @@ function getGlobalDir(runtime, explicitDir = null) {
     }
     return path.join(os.homedir(), '.gemini');
   }
-  
+
   // Claude Code: --config-dir > CLAUDE_CONFIG_DIR > ~/.claude
   if (explicitDir) {
     return expandTilde(explicitDir);
@@ -115,7 +143,7 @@ const banner = '\n' +
   '\n' +
   '  Get Shit Done ' + dim + 'v' + pkg.version + reset + '\n' +
   '  A meta-prompting, context engineering and spec-driven\n' +
-  '  development system for Claude Code, OpenCode, and Gemini by TÂCHES.\n';
+  '  development system for Claude Code, OpenCode, Gemini, and Qwen Code by TÂCHES.\n';
 
 // Parse --config-dir argument
 function parseConfigDirArg() {
@@ -149,7 +177,7 @@ console.log(banner);
 
 // Show help if requested
 if (hasHelp) {
-  console.log(`  ${yellow}Usage:${reset} npx get-shit-done-cc [options]\n\n  ${yellow}Options:${reset}\n    ${cyan}-g, --global${reset}              Install globally (to config directory)\n    ${cyan}-l, --local${reset}               Install locally (to current directory)\n    ${cyan}--claude${reset}                  Install for Claude Code only\n    ${cyan}--opencode${reset}                Install for OpenCode only\n    ${cyan}--gemini${reset}                  Install for Gemini only\n    ${cyan}--all${reset}                     Install for all runtimes\n    ${cyan}-u, --uninstall${reset}           Uninstall GSD (remove all GSD files)\n    ${cyan}-c, --config-dir <path>${reset}   Specify custom config directory\n    ${cyan}-h, --help${reset}                Show this help message\n    ${cyan}--force-statusline${reset}        Replace existing statusline config\n\n  ${yellow}Examples:${reset}\n    ${dim}# Interactive install (prompts for runtime and location)${reset}\n    npx get-shit-done-cc\n\n    ${dim}# Install for Claude Code globally${reset}\n    npx get-shit-done-cc --claude --global\n\n    ${dim}# Install for Gemini globally${reset}\n    npx get-shit-done-cc --gemini --global\n\n    ${dim}# Install for all runtimes globally${reset}\n    npx get-shit-done-cc --all --global\n\n    ${dim}# Install to custom config directory${reset}\n    npx get-shit-done-cc --claude --global --config-dir ~/.claude-bc\n\n    ${dim}# Install to current project only${reset}\n    npx get-shit-done-cc --claude --local\n\n    ${dim}# Uninstall GSD from Claude Code globally${reset}\n    npx get-shit-done-cc --claude --global --uninstall\n\n  ${yellow}Notes:${reset}\n    The --config-dir option is useful when you have multiple configurations.\n    It takes priority over CLAUDE_CONFIG_DIR / GEMINI_CONFIG_DIR environment variables.\n`);
+  console.log(`  ${yellow}Usage:${reset} npx get-shit-done-cc [options]\n\n  ${yellow}Options:${reset}\n    ${cyan}-g, --global${reset}              Install globally (to config directory)\n    ${cyan}-l, --local${reset}               Install locally (to current directory)\n    ${cyan}--claude${reset}                  Install for Claude Code only\n    ${cyan}--opencode${reset}                Install for OpenCode only\n    ${cyan}--gemini${reset}                  Install for Gemini only\n    ${cyan}--qwen${reset}                    Install for Qwen Code only\n    ${cyan}--all${reset}                     Install for all runtimes\n    ${cyan}-u, --uninstall${reset}           Uninstall GSD (remove all GSD files)\n    ${cyan}-c, --config-dir <path>${reset}   Specify custom config directory\n    ${cyan}-h, --help${reset}                Show this help message\n    ${cyan}--force-statusline${reset}        Replace existing statusline config\n\n  ${yellow}Examples:${reset}\n    ${dim}# Interactive install (prompts for runtime and location)${reset}\n    npx get-shit-done-cc\n\n    ${dim}# Install for Claude Code globally${reset}\n    npx get-shit-done-cc --claude --global\n\n    ${dim}# Install for Qwen Code globally${reset}\n    npx get-shit-done-cc --qwen --global\n\n    ${dim}# Install for Gemini globally${reset}\n    npx get-shit-done-cc --gemini --global\n\n    ${dim}# Install for all runtimes globally${reset}\n    npx get-shit-done-cc --all --global\n\n    ${dim}# Install to custom config directory${reset}\n    npx get-shit-done-cc --claude --global --config-dir ~/.claude-bc\n\n    ${dim}# Install to current project only${reset}\n    npx get-shit-done-cc --claude --local\n\n    ${dim}# Uninstall GSD from Claude Code globally${reset}\n    npx get-shit-done-cc --claude --global --uninstall\n\n  ${yellow}Notes:${reset}\n    The --config-dir option is useful when you have multiple configurations.\n    It takes priority over CLAUDE_CONFIG_DIR / GEMINI_CONFIG_DIR / QWEN_CONFIG_DIR environment variables.\n`);
   process.exit(0);
 }
 
@@ -437,6 +465,84 @@ function convertClaudeToGeminiAgent(content) {
   return `---\n${newFrontmatter}\n---${stripSubTags(body)}`;
 }
 
+/**
+ * Convert Claude Code agent frontmatter to Qwen Code format
+ * Qwen Code agents use .md files with YAML frontmatter, similar to Claude Code.
+ * Main differences:
+ * - Replace ~/.claude with ~/.qwen in file references
+ * - Keep tools array format (Qwen supports it)
+ * - Strip color field (not used in Qwen)
+ * - Strip name: field (Qwen uses filename for command name)
+ */
+function convertClaudeToQwenAgent(content) {
+  if (!content.startsWith('---')) return content;
+
+  const endIndex = content.indexOf('---', 3);
+  if (endIndex === -1) return content;
+
+  const frontmatter = content.substring(3, endIndex).trim();
+  const body = content.substring(endIndex + 3);
+
+  const lines = frontmatter.split('\n');
+  const newLines = [];
+  let inAllowedTools = false;
+  const tools = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Convert allowed-tools YAML array to tools list
+    if (trimmed.startsWith('allowed-tools:')) {
+      inAllowedTools = true;
+      continue;
+    }
+
+    // Handle inline tools: field (comma-separated string)
+    if (trimmed.startsWith('tools:')) {
+      const toolsValue = trimmed.substring(6).trim();
+      if (toolsValue) {
+        const parsed = toolsValue.split(',').map(t => t.trim()).filter(t => t);
+        tools.push(...parsed);
+      } else {
+        // tools: with no value means YAML array follows
+        inAllowedTools = true;
+      }
+      continue;
+    }
+
+    // Strip color field (not used in Qwen Code)
+    if (trimmed.startsWith('color:')) continue;
+
+    // Strip name: field (Qwen uses filename for command name)
+    if (trimmed.startsWith('name:')) continue;
+
+    // Collect allowed-tools/tools array items
+    if (inAllowedTools) {
+      if (trimmed.startsWith('- ')) {
+        tools.push(trimmed.substring(2).trim());
+        continue;
+      } else if (trimmed && !trimmed.startsWith('-')) {
+        inAllowedTools = false;
+      }
+    }
+
+    if (!inAllowedTools) {
+      newLines.push(line);
+    }
+  }
+
+  // Add tools as YAML array if we collected any
+  if (tools.length > 0) {
+    newLines.push('tools:');
+    for (const tool of tools) {
+      newLines.push(`  - ${tool}`);
+    }
+  }
+
+  const newFrontmatter = newLines.join('\n').trim();
+  return `---\n${newFrontmatter}\n---${body}`;
+}
+
 function convertClaudeToOpencodeFrontmatter(content) {
   // Replace tool name references in content (applies to all files)
   let convertedContent = content;
@@ -643,10 +749,11 @@ function copyFlattenedCommands(srcDir, destDir, prefix, pathPrefix, runtime) {
  * @param {string} srcDir - Source directory
  * @param {string} destDir - Destination directory
  * @param {string} pathPrefix - Path prefix for file references
- * @param {string} runtime - Target runtime ('claude', 'opencode', 'gemini')
+ * @param {string} runtime - Target runtime ('claude', 'opencode', 'gemini', 'qwen')
  */
 function copyWithPathReplacement(srcDir, destDir, pathPrefix, runtime) {
   const isOpencode = runtime === 'opencode';
+  const isQwen = runtime === 'qwen';
   const dirName = getDirName(runtime);
 
   // Clean install: remove existing destination to prevent orphaned files
@@ -670,7 +777,7 @@ function copyWithPathReplacement(srcDir, destDir, pathPrefix, runtime) {
       content = content.replace(claudeDirRegex, pathPrefix);
       content = processAttribution(content, getCommitAttribution(runtime));
 
-      // Convert frontmatter for opencode compatibility
+      // Convert frontmatter for runtime compatibility
       if (isOpencode) {
         content = convertClaudeToOpencodeFrontmatter(content);
         fs.writeFileSync(destPath, content);
@@ -681,6 +788,10 @@ function copyWithPathReplacement(srcDir, destDir, pathPrefix, runtime) {
         // Replace extension with .toml
         const tomlPath = destPath.replace(/\.md$/, '.toml');
         fs.writeFileSync(tomlPath, tomlContent);
+      } else if (isQwen) {
+        // Convert frontmatter for Qwen Code (strip name: field)
+        content = convertClaudeToQwenAgent(content);
+        fs.writeFileSync(destPath, content);
       } else {
         fs.writeFileSync(destPath, content);
       }
@@ -769,10 +880,11 @@ function cleanupOrphanedHooks(settings) {
  * Uninstall GSD from the specified directory for a specific runtime
  * Removes only GSD-specific files/directories, preserves user content
  * @param {boolean} isGlobal - Whether to uninstall from global or local
- * @param {string} runtime - Target runtime ('claude', 'opencode', 'gemini')
+ * @param {string} runtime - Target runtime ('claude', 'opencode', 'gemini', 'qwen')
  */
 function uninstall(isGlobal, runtime = 'claude') {
   const isOpencode = runtime === 'opencode';
+  const isQwen = runtime === 'qwen';
   const dirName = getDirName(runtime);
 
   // Get the target directory based on runtime and install type
@@ -787,6 +899,7 @@ function uninstall(isGlobal, runtime = 'claude') {
   let runtimeLabel = 'Claude Code';
   if (runtime === 'opencode') runtimeLabel = 'OpenCode';
   if (runtime === 'gemini') runtimeLabel = 'Gemini';
+  if (runtime === 'qwen') runtimeLabel = 'Qwen Code';
 
   console.log(`  Uninstalling GSD from ${cyan}${runtimeLabel}${reset} at ${cyan}${locationLabel}${reset}\n`);
 
@@ -1064,11 +1177,12 @@ function verifyFileInstalled(filePath, description) {
 /**
  * Install to the specified directory for a specific runtime
  * @param {boolean} isGlobal - Whether to install globally or locally
- * @param {string} runtime - Target runtime ('claude', 'opencode', 'gemini')
+ * @param {string} runtime - Target runtime ('claude', 'opencode', 'gemini', 'qwen')
  */
 function install(isGlobal, runtime = 'claude') {
   const isOpencode = runtime === 'opencode';
   const isGemini = runtime === 'gemini';
+  const isQwen = runtime === 'qwen';
   const dirName = getDirName(runtime);
   const src = path.join(__dirname, '..');
 
@@ -1091,6 +1205,7 @@ function install(isGlobal, runtime = 'claude') {
   let runtimeLabel = 'Claude Code';
   if (isOpencode) runtimeLabel = 'OpenCode';
   if (isGemini) runtimeLabel = 'Gemini';
+  if (isQwen) runtimeLabel = 'Qwen Code';
 
   console.log(`  Installing for ${cyan}${runtimeLabel}${reset} to ${cyan}${locationLabel}${reset}\n`);
 
@@ -1170,6 +1285,8 @@ function install(isGlobal, runtime = 'claude') {
           content = convertClaudeToOpencodeFrontmatter(content);
         } else if (isGemini) {
           content = convertClaudeToGeminiAgent(content);
+        } else if (isQwen) {
+          content = convertClaudeToQwenAgent(content);
         }
         fs.writeFileSync(path.join(agentsDest, entry.name), content);
       }
@@ -1229,6 +1346,7 @@ function install(isGlobal, runtime = 'claude') {
 
   // Configure statusline and hooks in settings.json
   // Gemini shares same hook system as Claude Code for now
+  // Qwen Code uses a different configuration system (skip hooks for now)
   const settingsPath = path.join(targetDir, 'settings.json');
   const settings = cleanupOrphanedHooks(readSettings(settingsPath));
   const statuslineCommand = isGlobal
@@ -1249,8 +1367,8 @@ function install(isGlobal, runtime = 'claude') {
     }
   }
 
-  // Configure SessionStart hook for update checking (skip for opencode)
-  if (!isOpencode) {
+  // Configure SessionStart hook for update checking (skip for opencode and qwen)
+  if (!isOpencode && !isQwen) {
     if (!settings.hooks) {
       settings.hooks = {};
     }
@@ -1283,8 +1401,9 @@ function install(isGlobal, runtime = 'claude') {
  */
 function finishInstall(settingsPath, settings, statuslineCommand, shouldInstallStatusline, runtime = 'claude') {
   const isOpencode = runtime === 'opencode';
+  const isQwen = runtime === 'qwen';
 
-  if (shouldInstallStatusline && !isOpencode) {
+  if (shouldInstallStatusline && !isOpencode && !isQwen) {
     settings.statusLine = {
       type: 'command',
       command: statuslineCommand
@@ -1303,6 +1422,7 @@ function finishInstall(settingsPath, settings, statuslineCommand, shouldInstallS
   let program = 'Claude Code';
   if (runtime === 'opencode') program = 'OpenCode';
   if (runtime === 'gemini') program = 'Gemini';
+  if (runtime === 'qwen') program = 'Qwen Code';
 
   const command = isOpencode ? '/gsd-help' : '/gsd:help';
   console.log(`
@@ -1385,15 +1505,18 @@ function promptRuntime(callback) {
   console.log(`  ${yellow}Which runtime(s) would you like to install for?${reset}\n\n  ${cyan}1${reset}) Claude Code ${dim}(~/.claude)${reset}
   ${cyan}2${reset}) OpenCode    ${dim}(~/.config/opencode)${reset} - open source, free models
   ${cyan}3${reset}) Gemini      ${dim}(~/.gemini)${reset}
-  ${cyan}4${reset}) All
+  ${cyan}4${reset}) Qwen Code   ${dim}(~/.qwen)${reset} - optimized for Qwen3-Coder
+  ${cyan}5${reset}) All
 `);
 
   rl.question(`  Choice ${dim}[1]${reset}: `, (answer) => {
     answered = true;
     rl.close();
     const choice = answer.trim() || '1';
-    if (choice === '4') {
-      callback(['claude', 'opencode', 'gemini']);
+    if (choice === '5') {
+      callback(['claude', 'opencode', 'gemini', 'qwen']);
+    } else if (choice === '4') {
+      callback(['qwen']);
     } else if (choice === '3') {
       callback(['gemini']);
     } else if (choice === '2') {
@@ -1460,17 +1583,17 @@ function installAllRuntimes(runtimes, isGlobal, isInteractive) {
     results.push(result);
   }
 
-  // Handle statusline for Claude & Gemini (OpenCode uses themes)
+  // Handle statusline for Claude & Gemini (OpenCode and Qwen use different systems)
   const claudeResult = results.find(r => r.runtime === 'claude');
   const geminiResult = results.find(r => r.runtime === 'gemini');
 
   // Logic: if both are present, ask once if interactive? Or ask for each?
   // Simpler: Ask once and apply to both if applicable.
-  
+
   if (claudeResult || geminiResult) {
     // Use whichever settings exist to check for existing statusline
     const primaryResult = claudeResult || geminiResult;
-    
+
     handleStatusline(primaryResult.settings, isInteractive, (shouldInstallStatusline) => {
       if (claudeResult) {
         finishInstall(claudeResult.settingsPath, claudeResult.settings, claudeResult.statuslineCommand, shouldInstallStatusline, 'claude');
@@ -1478,16 +1601,28 @@ function installAllRuntimes(runtimes, isGlobal, isInteractive) {
       if (geminiResult) {
          finishInstall(geminiResult.settingsPath, geminiResult.settings, geminiResult.statuslineCommand, shouldInstallStatusline, 'gemini');
       }
-      
+
       const opencodeResult = results.find(r => r.runtime === 'opencode');
       if (opencodeResult) {
         finishInstall(opencodeResult.settingsPath, opencodeResult.settings, opencodeResult.statuslineCommand, false, 'opencode');
       }
+
+      const qwenResult = results.find(r => r.runtime === 'qwen');
+      if (qwenResult) {
+        finishInstall(qwenResult.settingsPath, qwenResult.settings, qwenResult.statuslineCommand, false, 'qwen');
+      }
     });
   } else {
-    // Only OpenCode
-    const opencodeResult = results[0];
-    finishInstall(opencodeResult.settingsPath, opencodeResult.settings, opencodeResult.statuslineCommand, false, 'opencode');
+    // Only OpenCode or Qwen
+    const opencodeResult = results.find(r => r.runtime === 'opencode');
+    const qwenResult = results.find(r => r.runtime === 'qwen');
+
+    if (opencodeResult) {
+      finishInstall(opencodeResult.settingsPath, opencodeResult.settings, opencodeResult.statuslineCommand, false, 'opencode');
+    }
+    if (qwenResult) {
+      finishInstall(qwenResult.settingsPath, qwenResult.settings, qwenResult.statuslineCommand, false, 'qwen');
+    }
   }
 }
 
